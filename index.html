@@ -9,7 +9,7 @@
 
 <body>
   
-  <details class="location-box">
+ <details class="location-box">
   <summary id="boxTitle">Delivery to: No location selected</summary>
   <div class="location-content">
     <button id="getLocationBtn">Get My Current Location</button>
@@ -30,14 +30,6 @@
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFjkTsmVGgWlAhU2hKQSgeiFeKsEFYKBY&callback=initMap" async defer></script>
 
 <style>
-.content {
-  min-width: 100% !important;
-  min-height: 80vh;
-  display:flex;
-  align-items: center;
-  align-content: center;
-  text-align: center !important
-}
   .location-box {
     margin: 10px;
     max-width: 400px;
@@ -114,16 +106,16 @@
   let map, marker;
   let currentCoords = null;
 
-  // Initialize Google Map
+  // Initialize Google Map with Cairo as default center
   function initMap() {
     map = new google.maps.Map(document.getElementById("map"), {
-      center: { lat: 24.7136, lng: 46.6753 },
+      center: { lat: 30.0444, lng: 31.2357 }, // Cairo coordinates
       zoom: 8
     });
     marker = new google.maps.Marker({
       map: map,
       draggable: true,
-      position: { lat: 24.7136, lng: 46.6753 }
+      position: { lat: 30.0444, lng: 31.2357 } // Cairo coordinates
     });
     map.addListener("click", function(e) {
       marker.setPosition(e.latLng);
@@ -192,7 +184,7 @@
       locationInput.style.display = "none";
       locationList.style.display = "none";
       google.maps.event.trigger(map, "resize");
-      map.setCenter({ lat: 24.7136, lng: 46.6753 });
+      map.setCenter({ lat: 30.0444, lng: 31.2357 }); // Center on Cairo
     });
 
     saveLocationBtn.addEventListener("click", function() {
