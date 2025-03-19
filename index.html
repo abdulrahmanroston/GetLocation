@@ -35,7 +35,7 @@
     </div>
   </div>
 
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFjkTsmVGgWlAhU2hKQSgeiFeKsEFYKBY&callback=initMap" async defer></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFjkTsmVGgWlAhU2hKQSgeiFeKsEFYKBY&libraries=geometry&callback=initMap" async defer></script>
 
   <style>
     body {
@@ -159,7 +159,6 @@
       color: #000;
     }
     .map-control-icon {
-     
       background-color: #fff;
       border: 2px solid #000;
       border-radius: 50%;
@@ -177,11 +176,86 @@
   </style>
 
   <script>
+    // Delivery zones data
+    const deliveryZones = [
+      {
+        "name": "Zayed - October - Downtown",
+        "price": 100,
+        "coordinates": [
+          {"lat": 30.072333983145683, "lng": 30.80576684531067},
+          {"lat": 29.83277470999751, "lng": 31.032435150611974},
+          {"lat": 29.95933972392443, "lng": 31.251467322533642},
+          {"lat": 30.158998602087763, "lng": 31.071459889217834},
+          {"lat": 30.082374454189065, "lng": 30.799845901716395}
+        ]
+      },
+      {
+        "name": "Downtown",
+        "price": 100,
+        "coordinates": [
+          {"lat": 30.081997418774932, "lng": 31.183210966366318},
+          {"lat": 30.001906827184058, "lng": 31.20781603542389},
+          {"lat": 30.02409845444207, "lng": 31.294510288894998},
+          {"lat": 30.10418627855404, "lng": 31.272597827694426},
+          {"lat": 30.08608754402826, "lng": 31.17917376670809}
+        ]
+      },
+      {
+        "name": "Maadi - Mokkatam",
+        "price": 80,
+        "coordinates": [
+          {"lat": 29.987694610794975, "lng": 31.22877896923285},
+          {"lat": 29.9364510781828, "lng": 31.27693013574205},
+          {"lat": 29.97589138247797, "lng": 31.35072877887862},
+          {"lat": 30.056970722147838, "lng": 31.29867304954874},
+          {"lat": 29.99236321392098, "lng": 31.22556445926776}
+        ]
+      },
+      {
+        "name": "Tagamo3 - Nasr City - Heliopolis",
+        "price": 80,
+        "coordinates": [
+          {"lat": 30.093225262991027, "lng": 31.256401155255105},
+          {"lat": 29.986346323356457, "lng": 31.376028848411778},
+          {"lat": 29.937836662221116, "lng": 31.3363868211394},
+          {"lat": 29.93204200785351, "lng": 31.52794150190715},
+          {"lat": 30.07632817665167, "lng": 31.57783811726901},
+          {"lat": 30.110326571549976, "lng": 31.30293394363386},
+          {"lat": 30.098306723993232, "lng": 31.25303379907504}
+        ]
+      },
+      {
+        "name": "Madinaty - Shorouk City - Badr City",
+        "price": 80,
+        "coordinates": [
+          {"lat": 30.182864608777052, "lng": 31.581425674816842},
+          {"lat": 30.059273584988745, "lng": 31.61774724410617},
+          {"lat": 30.146886481401083, "lng": 31.80790317816968},
+          {"lat": 30.236683762643494, "lng": 31.72364298987378},
+          {"lat": 30.1896667935396, "lng": 31.574580740831152},
+          {"lat": 30.16249645030713, "lng": 31.581024260656534}
+        ]
+      },
+      {
+        "name": "Obour",
+        "price": 50,
+        "coordinates": [
+          {"lat": 30.24330847007751, "lng": 31.41035652142733},
+          {"lat": 30.153726500465837, "lng": 31.441951505923242},
+          {"lat": 30.17822998011968, "lng": 31.583636970589936},
+          {"lat": 30.288593184062037, "lng": 31.560366614127588},
+          {"lat": 30.256184819988704, "lng": 31.39858477451915}
+        ]
+      }
+    ];
+
+    // Global variables
     let map, marker;
     let currentCoords = null;
     let defaultPosition = { lat: 30.0444, lng: 31.2357 };
     let hasMovedPin = false;
 
+    // Initialize Google Map
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
         center: defaultPosition,
@@ -192,185 +266,231 @@
         draggable: true,
         position: defaultPosition
       });
-      map.addListener("click", function(e) {
+      map.addListener("click", (e) => {
         marker.setPosition(e.latLng);
         hasMovedPin = true;
       });
-      marker.addListener("dragend", function() {
-        hasMovedPin = true;
-      });
+      marker.addListener("dragend", () => hasMovedPin = true);
+      addMapControls();
+    }
 
+    // Add custom map controls
+    function addMapControls() {
       const locationIcon = document.createElement("button");
       locationIcon.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i>';
       locationIcon.className = "map-control-icon";
-      locationIcon.addEventListener("click", function() {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            function(position) {
-              const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
-              marker.setPosition(pos);
-              map.setCenter(pos);
-              map.setZoom(15);
-              hasMovedPin = true;
-            },
-            function(error) {
-              alert("Location access denied or failed. Please select your location manually from the map.");
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-          );
-        }
-      });
+      locationIcon.addEventListener("click", getCurrentPosition);
       map.controls[google.maps.ControlPosition.BOTTOM_RIGHT].push(locationIcon);
     }
 
-    if ("geolocation" in navigator) {
-      const header = document.querySelector(".location-header");
+    // Toggle modal visibility
+    function toggleModal() {
       const modal = document.getElementById("locationModal");
       const toggleArrow = document.querySelector(".toggle-arrow");
-      const closeModalBtn = document.getElementById("closeModalBtn");
-      const getLocationBtn = document.getElementById("getLocationBtn");
-      const saveLocationBtn = document.getElementById("saveLocationBtn");
-      const saveMapLocationBtn = document.getElementById("saveMapLocationBtn");
-      const locationList = document.getElementById("locationList");
-      const locationInput = document.getElementById("locationInput");
-      const locationNameInput = document.getElementById("locationName");
-      const phoneNumberInput = document.getElementById("phoneNumber");
       const locationPreview = document.getElementById("locationPreview");
+      if (modal.classList.contains("open")) {
+        modal.classList.remove("open");
+        toggleArrow.classList.remove("open");
+      } else {
+        modal.classList.add("open");
+        toggleArrow.classList.add("open");
+        google.maps.event.trigger(map, "resize");
+        map.setCenter(defaultPosition);
+        locationPreview.innerHTML = "If your order is for a different location, use 'Set Location from Map'.";
+      }
+    }
+
+    // Update header title
+    function updateTitle() {
       const boxTitle = document.getElementById("boxTitle");
+      const locations = JSON.parse(localStorage.getItem("userLocations")) || [];
+      const selectedIndex = document.querySelector('input[name="selectedLocation"]:checked');
+      boxTitle.textContent = selectedIndex && locations[selectedIndex.value] ? locations[selectedIndex.value].name : "No location selected";
+    }
 
-      function toggleModal() {
-        if (modal.classList.contains("open")) {
-          modal.classList.remove("open");
-          toggleArrow.classList.remove("open");
-        } else {
-          modal.classList.add("open");
-          toggleArrow.classList.add("open");
-          google.maps.event.trigger(map, "resize");
-          map.setCenter(defaultPosition);
-          locationPreview.innerHTML = "If your order is for a different location, use 'Set Location from Map'.";
-        }
-      }
-
-      function updateTitle() {
-        let locations = JSON.parse(localStorage.getItem("userLocations")) || [];
-        let selectedIndex = document.querySelector('input[name="selectedLocation"]:checked');
-        if (selectedIndex && locations[selectedIndex.value]) {
-          boxTitle.textContent = locations[selectedIndex.value].name;
-        } else {
-          boxTitle.textContent = "No location selected";
-        }
-      }
-
-      getLocationBtn.addEventListener("click", function() {
+    // Get current position
+    function getCurrentPosition() {
+      if (navigator.geolocation) {
+        const locationPreview = document.getElementById("locationPreview");
         locationPreview.innerHTML = "Fetching your current location...";
         navigator.geolocation.getCurrentPosition(
-          function(position) {
-            currentCoords = {
-              link: `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`,
-              timestamp: new Date().toLocaleString()
-            };
-            locationPreview.innerHTML = `Location set to your current position (${position.coords.latitude}, ${position.coords.longitude}).`;
-            locationInput.style.display = "block";
-            locationList.style.display = "none";
+          (position) => {
+            const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
+            marker.setPosition(pos);
+            map.setCenter(pos);
+            map.setZoom(15);
+            hasMovedPin = true;
+            setCurrentCoords(pos);
+            showLocationInput(`Location set to your current position (${pos.lat}, ${pos.lng}).`);
           },
-          function(error) {
+          (error) => {
             locationPreview.innerHTML = "Failed to get location. Please select manually from the map.";
             alert("Location access failed. Please select your location manually from the map.");
           },
           { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
-      });
-
-      saveLocationBtn.addEventListener("click", function() {
-        const name = locationNameInput.value.trim();
-        const phone = phoneNumberInput.value.trim();
-        if (name && phone && currentCoords) {
-          let locations = JSON.parse(localStorage.getItem("userLocations")) || [];
-          currentCoords.name = name;
-          currentCoords.phone = phone;
-          locations.push(currentCoords);
-          localStorage.setItem("userLocations", JSON.stringify(locations));
-          displayLocations();
-          locationInput.style.display = "none";
-          locationList.style.display = "block";
-          locationNameInput.value = "";
-          phoneNumberInput.value = "";
-          locationPreview.innerHTML = "";
-          toggleModal();
-        } else {
-          locationPreview.innerHTML = "Please enter both a location name and phone number.";
-        }
-      });
-
-      saveMapLocationBtn.addEventListener("click", function() {
-        const position = marker.getPosition();
-        if (!hasMovedPin) {
-          locationPreview.innerHTML = "Please move the pin to select a location on the map.";
-        } else {
-          currentCoords = {
-            link: `https://www.google.com/maps?q=${position.lat()},${position.lng()}`,
-            timestamp: new Date().toLocaleString()
-          };
-          locationPreview.innerHTML = `Location: (${position.lat()}, ${position.lng()})`;
-          locationInput.style.display = "block";
-          locationList.style.display = "none";
-        }
-      });
-
-      function displayLocations() {
-        let locations = JSON.parse(localStorage.getItem("userLocations")) || [];
-        locationList.innerHTML = "<h4>Saved Locations:</h4>";
-        locations.forEach((loc, index) => {
-          locationList.innerHTML += `
-            <div>
-              <input type="radio" name="selectedLocation" value="${index}" id="loc${index}" ${index === 0 && locations.length === 1 ? "checked" : ""}>
-              <label for="loc${index}">${loc.name} - <a href="${loc.link}" target="_blank">View on Map</a></label>
-            </div>`;
-        });
-        document.querySelectorAll('input[name="selectedLocation"]').forEach(radio => {
-          radio.addEventListener("change", updateTitle);
-        });
-        updateTitle();
       }
+    }
+
+    // Set current coordinates
+    function setCurrentCoords(position) {
+      currentCoords = {
+        link: `https://www.google.com/maps?q=${position.lat},${position.lng}`,
+        timestamp: new Date().toLocaleString()
+      };
+    }
+
+    // Show location input fields
+    function showLocationInput(message) {
+      const locationInput = document.getElementById("locationInput");
+      const locationList = document.getElementById("locationList");
+      const locationPreview = document.getElementById("locationPreview");
+      locationPreview.innerHTML = message;
+      locationInput.style.display = "block";
+      locationList.style.display = "none";
+    }
+
+    // Check if location is within a delivery zone
+    function checkDeliveryZone(lat, lng) {
+      const position = new google.maps.LatLng(lat, lng);
+      for (const zone of deliveryZones) {
+        const polygon = new google.maps.Polygon({ paths: zone.coordinates });
+        if (google.maps.geometry.poly.containsLocation(position, polygon)) {
+          return { name: zone.name, price: zone.price };
+        }
+      }
+      return null;
+    }
+
+    // Save location
+    function saveLocation() {
+      const name = document.getElementById("locationName").value.trim();
+      const phone = document.getElementById("phoneNumber").value.trim();
+      const locationPreview = document.getElementById("locationPreview");
+      if (name && phone && currentCoords) {
+        const lat = parseFloat(currentCoords.link.split("q=")[1].split(",")[0]);
+        const lng = parseFloat(currentCoords.link.split("q=")[1].split(",")[1]);
+        const zone = checkDeliveryZone(lat, lng);
+        if (!zone) {
+          locationPreview.innerHTML = "Sorry, delivery is not available to this location.";
+          return;
+        }
+        currentCoords.name = name;
+        currentCoords.phone = phone;
+        currentCoords.deliveryPrice = zone.price;
+        const locations = JSON.parse(localStorage.getItem("userLocations")) || [];
+        locations.push(currentCoords);
+        localStorage.setItem("userLocations", JSON.stringify(locations));
+        addToCart(zone.price);
+        displayLocations();
+        resetInputFields();
+        toggleModal();
+      } else {
+        locationPreview.innerHTML = "Please enter both a location name and phone number.";
+      }
+    }
+
+    // Add delivery price to cart
+    function addToCart(deliveryPrice) {
+      let cart = JSON.parse(localStorage.getItem("cart")) || { items: [], deliveryPrice: 0 };
+      cart.deliveryPrice = deliveryPrice;
+      localStorage.setItem("cart", JSON.stringify(cart));
+      console.log(`Added delivery price ${deliveryPrice} EGP to cart.`);
+      // Update UI if needed (e.g., display cart total)
+    }
+
+    // Display saved locations
+    function displayLocations() {
+      const locationList = document.getElementById("locationList");
+      const locations = JSON.parse(localStorage.getItem("userLocations")) || [];
+      locationList.innerHTML = "<h4>Saved Locations:</h4>";
+      locations.forEach((loc, index) => {
+        locationList.innerHTML += `
+          <div>
+            <input type="radio" name="selectedLocation" value="${index}" id="loc${index}" ${index === 0 && locations.length === 1 ? "checked" : ""}>
+            <label for="loc${index}">${loc.name} - <a href="${loc.link}" target="_blank">View on Map</a> (Delivery: ${loc.deliveryPrice} EGP)</label>
+          </div>`;
+      });
+      document.querySelectorAll('input[name="selectedLocation"]').forEach(radio => {
+        radio.addEventListener("change", () => {
+          updateTitle();
+          const selectedIndex = document.querySelector('input[name="selectedLocation"]:checked').value;
+          addToCart(locations[selectedIndex].deliveryPrice);
+        });
+      });
+      updateTitle();
+    }
+
+    // Reset input fields
+    function resetInputFields() {
+      const locationInput = document.getElementById("locationInput");
+      const locationList = document.getElementById("locationList");
+      const locationNameInput = document.getElementById("locationName");
+      const phoneNumberInput = document.getElementById("phoneNumber");
+      const locationPreview = document.getElementById("locationPreview");
+      locationInput.style.display = "none";
+      locationList.style.display = "block";
+      locationNameInput.value = "";
+      phoneNumberInput.value = "";
+      locationPreview.innerHTML = "";
+    }
+
+    // Validate checkout
+    function validateCheckout(e) {
+      const locations = JSON.parse(localStorage.getItem("userLocations")) || [];
+      const selectedIndex = document.querySelector('input[name="selectedLocation"]:checked');
+      if (!selectedIndex || locations.length === 0) {
+        e.preventDefault();
+        alert("Please add or select a delivery location before proceeding to checkout.");
+        toggleModal();
+        return false;
+      }
+      return true;
+    }
+
+    // Main logic
+    if ("geolocation" in navigator) {
+      const header = document.querySelector(".location-header");
+      const closeModalBtn = document.getElementById("closeModalBtn");
+      const getLocationBtn = document.getElementById("getLocationBtn");
+      const saveLocationBtn = document.getElementById("saveLocationBtn");
+      const saveMapLocationBtn = document.getElementById("saveMapLocationBtn");
 
       header.addEventListener("click", toggleModal);
       closeModalBtn.addEventListener("click", toggleModal);
+      getLocationBtn.addEventListener("click", getCurrentPosition);
+      saveLocationBtn.addEventListener("click", saveLocation);
+      saveMapLocationBtn.addEventListener("click", () => {
+        const position = marker.getPosition();
+        if (!hasMovedPin) {
+          document.getElementById("locationPreview").innerHTML = "Please move the pin to select a location on the map.";
+        } else {
+          setCurrentCoords({ lat: position.lat(), lng: position.lng() });
+          showLocationInput(`Location: (${position.lat()}, ${position.lng()})`);
+        }
+      });
 
-      document.addEventListener("DOMContentLoaded", function() {
-        let locations = JSON.parse(localStorage.getItem("userLocations")) || [];
+      document.addEventListener("DOMContentLoaded", () => {
         displayLocations();
+        const locations = JSON.parse(localStorage.getItem("userLocations")) || [];
         if (locations.length === 0 || !document.querySelector('input[name="selectedLocation"]:checked')) {
           toggleModal();
         }
 
         const checkoutLinks = document.querySelectorAll('a[href="/checkout"], button[data-checkout]');
-        checkoutLinks.forEach(link => {
-          link.addEventListener("click", function(e) {
-            let locations = JSON.parse(localStorage.getItem("userLocations")) || [];
-            let selectedIndex = document.querySelector('input[name="selectedLocation"]:checked');
-            if (!selectedIndex || locations.length === 0) {
-              e.preventDefault();
-              alert("Please select a delivery location before proceeding to checkout.");
-              toggleModal();
-            }
-          });
-        });
+        checkoutLinks.forEach(link => link.addEventListener("click", validateCheckout));
 
         const checkoutForm = document.querySelector('form[action="/cart"]');
         if (checkoutForm) {
-          checkoutForm.addEventListener("submit", function(e) {
-            let locations = JSON.parse(localStorage.getItem("userLocations")) || [];
-            let selectedIndex = document.querySelector('input[name="selectedLocation"]:checked');
-            if (selectedIndex && locations[selectedIndex.value]) {
+          checkoutForm.addEventListener("submit", (e) => {
+            if (validateCheckout(e)) {
+              const locations = JSON.parse(localStorage.getItem("userLocations")) || [];
+              const selectedIndex = document.querySelector('input[name="selectedLocation"]:checked');
               const locationInput = document.createElement("input");
               locationInput.type = "hidden";
               locationInput.name = "attributes[SelectedLocation]";
               locationInput.value = JSON.stringify(locations[selectedIndex.value]);
               checkoutForm.appendChild(locationInput);
-            } else {
-              e.preventDefault();
-              alert("Please select a delivery location before proceeding to checkout.");
-              toggleModal();
             }
           });
         }
