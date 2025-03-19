@@ -77,7 +77,7 @@
       bottom: -100%;
       left: 0;
       width: 100%;
-      height: 90%;
+      height: 80%;
       background-color: #fff;
       box-shadow: 0 -4px 15px rgba(0,0,0,0.2);
       transition: bottom 0.4s ease-in-out;
@@ -88,7 +88,7 @@
       bottom: 0;
     }
     .location-modal-content {
-      padding: 15px 0;
+      padding: 15px 10px;
       display: flex;
       flex-direction: column;
       height: 100%;
@@ -134,14 +134,18 @@
       margin-top: 15px;
     }
     #locationList div {
-      padding: 8px;
-      margin: 5px 0;
+      padding: 3px 5px;
+      margin: 8px 0;
       background-color: #fff;
-      border: 1px solid #000;
       border-radius: 4px;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       transition: background-color 0.2s ease;
+    }
+    #locationList > div {
+      border: 1px solid #000;
+      padding: 0 8px ;
     }
     #locationList div:hover {
       background-color: #f0f0f0;
@@ -163,7 +167,7 @@
       border: 2px solid #000;
       border-radius: 50%;
       padding: 8px;
-      font-size: 22px;
+      font-size: 20px;
       color: #000;
       cursor: pointer;
       margin: 10px;
@@ -173,13 +177,22 @@
       background-color: #000;
       color: #fff;
     }
+    .delete-icon {
+      cursor: pointer;
+      color: #ff0000;
+      margin-left: 10px;
+      transition: color 0.2s ease;
+    }
+    .delete-icon:hover {
+      color: #cc0000;
+    }
   </style>
 
   <script>
     // Delivery zones data
     const deliveryZones = [
       {
-        "name": "Zayed - October - Downtown",
+        "name": "Zayed - October",
         "price": 100,
         "coordinates": [
           {"lat": 30.072333983145683, "lng": 30.80576684531067},
@@ -252,7 +265,8 @@
     // Global variables
     let map, marker;
     let currentCoords = null;
-    let defaultPosition = { lat: 30.0444, lng: 31.2357 };
+    // Updated default position from GeoJSON coordinates
+    let defaultPosition = { lat: 30.01626356681352, lng: 31.412277903747793 }; // [lng, lat] reversed to [lat, lng]
     let hasMovedPin = false;
 
     // Initialize Google Map
@@ -383,6 +397,14 @@
         localStorage.setItem("userLocations", JSON.stringify(locations));
         addToCart(zone.price);
         displayLocations();
+        const newIndex = locations.length - 1;
+        setTimeout(() => {
+          const newRadio = document.getElementById(`loc${newIndex}`);
+          if (newRadio) {
+            newRadio.checked = true;
+            updateTitle();
+          }
+        }, 0);
         resetInputFields();
         toggleModal();
       } else {
@@ -396,7 +418,6 @@
       cart.deliveryPrice = deliveryPrice;
       localStorage.setItem("cart", JSON.stringify(cart));
       console.log(`Added delivery price ${deliveryPrice} EGP to cart.`);
-      // Update UI if needed (e.g., display cart total)
     }
 
     // Display saved locations
@@ -407,8 +428,11 @@
       locations.forEach((loc, index) => {
         locationList.innerHTML += `
           <div>
-            <input type="radio" name="selectedLocation" value="${index}" id="loc${index}" ${index === 0 && locations.length === 1 ? "checked" : ""}>
-            <label for="loc${index}">${loc.name} - <a href="${loc.link}" target="_blank">View on Map</a> (Delivery: ${loc.deliveryPrice} EGP)</label>
+            <div>
+              <input type="radio" name="selectedLocation" value="${index}" id="loc${index}">
+              <label for="loc${index}">${loc.name} - <a href="${loc.link}" target="_blank">View on Map</a> (Delivery: ${loc.deliveryPrice} EGP)</label>
+            </div>
+            <i class="fa-solid fa-trash delete-icon" data-index="${index}"></i>
           </div>`;
       });
       document.querySelectorAll('input[name="selectedLocation"]').forEach(radio => {
@@ -418,7 +442,28 @@
           addToCart(locations[selectedIndex].deliveryPrice);
         });
       });
-      updateTitle();
+      document.querySelectorAll('.delete-icon').forEach(icon => {
+        icon.addEventListener("click", (e) => {
+          const index = e.target.getAttribute("data-index");
+          deleteLocation(index);
+        });
+      });
+    }
+
+    // Delete a location
+    function deleteLocation(index) {
+      const locations = JSON.parse(localStorage.getItem("userLocations")) || [];
+      if (locations.length > 0 && index >= 0 && index < locations.length) {
+        locations.splice(index, 1);
+        localStorage.setItem("userLocations", JSON.stringify(locations));
+        displayLocations();
+        updateTitle();
+        if (locations.length === 0) {
+          let cart = JSON.parse(localStorage.getItem("cart")) || { items: [], deliveryPrice: 0 };
+          cart.deliveryPrice = 0;
+          localStorage.setItem("cart", JSON.stringify(cart));
+        }
+      }
     }
 
     // Reset input fields
