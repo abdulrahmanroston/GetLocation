@@ -1,275 +1,383 @@
 <!DOCTYPE html>
 <html>
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title></title>
+  <title>Location Selector</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 
 <body>
-  
- <details class="location-box">
-  <summary id="boxTitle">Delivery to: No location selected</summary>
-  <div class="location-content">
-    <button id="getLocationBtn">Get My Current Location</button>
-    <button id="mapLocationBtn">Choose from Map</button>
-    <div id="mapContainer" style="display:none;">
-      <div id="map" style="height: 300px; width: 100%;"></div>
-      <button id="saveMapLocationBtn">Save Location from Map</button>
-    </div>
-    <div id="locationInput" style="display:none;">
-      <input type="text" id="locationName" placeholder="Enter location name (e.g., Home)" style="width: 100%; padding: 8px; margin: 5px 0;">
-      <div id="locationPreview"></div>
-      <button id="saveLocationBtn">Save Location</button>
-    </div>
-    <div id="locationList"></div>
+  <div class="location-header">
+    <span><i class="fa-solid fa-location-dot"></i> Delivery to: <span id="boxTitle">No location selected</span></span>
+    <span class="toggle-arrow">▼</span>
   </div>
-</details>
 
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFjkTsmVGgWlAhU2hKQSgeiFeKsEFYKBY&callback=initMap" async defer></script>
+  <div id="locationModal" class="location-modal">
+    <div class="location-modal-content">
+      <div class="modal-header">
+        <button id="closeModalBtn" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="map" style="height: 300px; width: 100%; border-radius: 8px;"></div>
+      <div class="modal-controls">
+        <div class="buttons-loc">
+          <button id="getLocationBtn">Get My Current Location</button>
+          <button id="saveMapLocationBtn">Set Location from Map</button>
+        </div>
+        <div id="locationInput" style="display:none;">
+          <input type="text" id="locationName" placeholder="Enter location name (e.g., Home)" style="width: 100%; padding: 8px; margin: 5px 0;">
+          <input type="tel" id="phoneNumber" placeholder="Enter phone number" style="width: 100%; padding: 8px; margin: 5px 0;">
+          <div id="locationPreview"></div>
+          <button id="saveLocationBtn">Save Location</button>
+        </div>
+        <div id="locationList"></div>
+      </div>
+    </div>
+  </div>
 
-<style>
-  .location-box {
-    margin: 10px;
-    max-width: 400px;
-    font-family: Arial, sans-serif;
-  }
-  .location-box summary {
-    padding: 12px 15px;
-    background-color: #ffffff;
-    border: 1px solid #e0e0e0;
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: 600;
-    color: #333;
-    transition: background-color 0.3s ease;
-  }
-  .location-box summary:hover {
-    background-color: #f9f9f9;
-  }
-  .location-content {
-    padding: 15px;
-    background-color: #ffffff;
-    border: 1px solid #e0e0e0;
-    border-top: none;
-    border-radius: 0 0 5px 5px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-  }
-  .location-content button {
-    padding: 8px 15px;
-    margin: 5px 0;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-  }
-  .location-content button:hover {
-    background-color: #0056b3;
-  }
-  #locationList {
-    margin-top: 15px;
-  }
-  #locationList div {
-    padding: 8px;
-    margin: 5px 0;
-    background-color: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    transition: background-color 0.2s ease;
-  }
-  #locationList div:hover {
-    background-color: #e9ecef;
-  }
-  #locationList input[type="radio"] {
-    margin-right: 10px;
-  }
-  #locationList label {
-    font-size: 14px;
-    color: #333;
-  }
-  #locationPreview {
-    margin: 5px 0;
-    font-size: 14px;
-    color: #666;
-  }
-  #mapContainer {
-    margin-top: 10px;
-  }
-</style>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAFjkTsmVGgWlAhU2hKQSgeiFeKsEFYKBY&callback=initMap" async defer></script>
 
-<script>
-  let map, marker;
-  let currentCoords = null;
-
-  // Initialize Google Map with Cairo as default center
-  function initMap() {
-    map = new google.maps.Map(document.getElementById("map"), {
-      center: { lat: 30.0444, lng: 31.2357 }, // Cairo coordinates
-      zoom: 8
-    });
-    marker = new google.maps.Marker({
-      map: map,
-      draggable: true,
-      position: { lat: 30.0444, lng: 31.2357 } // Cairo coordinates
-    });
-    map.addListener("click", function(e) {
-      marker.setPosition(e.latLng);
-    });
-  }
-
-  if ("geolocation" in navigator) {
-    const getLocationBtn = document.getElementById("getLocationBtn");
-    const saveLocationBtn = document.getElementById("saveLocationBtn");
-    const mapLocationBtn = document.getElementById("mapLocationBtn");
-    const saveMapLocationBtn = document.getElementById("saveMapLocationBtn");
-    const locationList = document.getElementById("locationList");
-    const locationInput = document.getElementById("locationInput");
-    const locationNameInput = document.getElementById("locationName");
-    const locationPreview = document.getElementById("locationPreview");
-    const boxTitle = document.getElementById("boxTitle");
-    const mapContainer = document.getElementById("mapContainer");
-
-    function updateTitle() {
-      let locations = JSON.parse(localStorage.getItem("userLocations")) || [];
-      let selectedIndex = document.querySelector('input[name="selectedLocation"]:checked');
-      if (selectedIndex && locations[selectedIndex.value]) {
-        boxTitle.textContent = `Delivery to: ${locations[selectedIndex.value].name}`;
-      } else {
-        boxTitle.textContent = "Delivery to: No location selected";
-      }
+  <style>
+    body {
+      margin-top: 50px;
+      font-family: Arial, sans-serif;
+      background-color: #fff;
     }
-
-    getLocationBtn.addEventListener("click", function() {
-      locationPreview.innerHTML = "Fetching location...";
-      navigator.geolocation.getCurrentPosition(
-        function(position) {
-          currentCoords = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            timestamp: new Date().toLocaleString()
-          };
-          locationPreview.innerHTML = `Location: (${currentCoords.lat}, ${currentCoords.lng}) - ${currentCoords.timestamp}`;
-          locationInput.style.display = "block";
-          locationList.style.display = "none";
-          mapContainer.style.display = "none";
-        },
-        function(error) {
-          let errorMessage = "Failed to get location: ";
-          switch(error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage += "Permission denied. Please allow location access in settings.";
-              break;
-            case error.POSITION_UNAVAILABLE:
-              errorMessage += "Location unavailable.";
-              break;
-            case error.TIMEOUT:
-              errorMessage += "Request timed out. Try again.";
-              break;
-            default:
-              errorMessage += error.message;
-          }
-          locationPreview.innerHTML = errorMessage;
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    });
-
-    mapLocationBtn.addEventListener("click", function() {
-      mapContainer.style.display = "block";
-      locationInput.style.display = "none";
-      locationList.style.display = "none";
-      google.maps.event.trigger(map, "resize");
-      map.setCenter({ lat: 30.0444, lng: 31.2357 }); // Center on Cairo
-    });
-
-    saveLocationBtn.addEventListener("click", function() {
-      const name = locationNameInput.value.trim();
-      if (name && currentCoords) {
-        let locations = JSON.parse(localStorage.getItem("userLocations")) || [];
-        currentCoords.name = name;
-        locations.push(currentCoords);
-        localStorage.setItem("userLocations", JSON.stringify(locations));
-        displayLocations();
-        locationInput.style.display = "none";
-        locationList.style.display = "block";
-        locationNameInput.value = "";
-        locationPreview.innerHTML = "";
-      } else {
-        locationPreview.innerHTML = "Please enter a location name.";
-      }
-    });
-
-    saveMapLocationBtn.addEventListener("click", function() {
-      const position = marker.getPosition();
-      if (position) {
-        currentCoords = {
-          lat: position.lat(),
-          lng: position.lng(),
-          timestamp: new Date().toLocaleString()
-        };
-        locationPreview.innerHTML = `Location: (${currentCoords.lat}, ${currentCoords.lng}) - ${currentCoords.timestamp}`;
-        locationInput.style.display = "block";
-        mapContainer.style.display = "none";
-        locationList.style.display = "none";
-      } else {
-        locationPreview.innerHTML = "Please select a location on the map first.";
-      }
-    });
-
-    // Display saved locations
-    function displayLocations() {
-      let locations = JSON.parse(localStorage.getItem("userLocations")) || [];
-      locationList.innerHTML = "<h4>Saved Locations:</h4>";
-      locations.forEach((loc, index) => {
-        locationList.innerHTML += `
-          <div>
-            <input type="radio" name="selectedLocation" value="${index}" id="loc${index}" ${index === 0 && locations.length === 1 ? "checked" : ""}>
-            <label for="loc${index}">${loc.name} (${loc.lat}, ${loc.lng}) - ${loc.timestamp}</label>
-          </div>`;
-      });
-      document.querySelectorAll('input[name="selectedLocation"]').forEach(radio => {
-        radio.addEventListener("change", updateTitle);
-      });
-      updateTitle();
+    .location-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: 12px 20px;
+      background-color: #000;
+      border-bottom: 1px solid #000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      color: #fff;
+      z-index: 1000;
+      cursor: pointer;
     }
+    .location-header i {
+      margin-right: 8px;
+      color: #fff;
+    }
+    .toggle-arrow {
+      font-size: 20px;
+      transition: transform 0.3s ease;
+      color: #fff;
+      display: inline-block;
+    }
+    .toggle-arrow.open {
+      transform: rotate(180deg);
+    }
+    .location-modal {
+      position: fixed;
+      bottom: -100%;
+      left: 0;
+      width: 100%;
+      height: 90%;
+      background-color: #fff;
+      box-shadow: 0 -4px 15px rgba(0,0,0,0.2);
+      transition: bottom 0.4s ease-in-out;
+      z-index: 1001;
+      overflow-y: auto;
+    }
+    .location-modal.open {
+      bottom: 0;
+    }
+    .location-modal-content {
+      padding: 15px 0;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .modal-header {
+      text-align: right;
+      padding: 0 15px;
+    }
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 23px;
+      cursor: pointer;
+      color: #000;
+      padding: 0;
+      margin-bottom: 15px;
+    }
+    .close-btn:hover i {
+      color: #ff0000;
+    }
+    .modal-controls {
+      padding: 10px 20px;
+    }
+    .buttons-loc {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .modal-controls button {
+      padding: 10px 15px;
+      margin: 5px 0;
+      background-color: #000;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .modal-controls button:hover {
+      background-color: #333;
+    }
+    #locationList {
+      margin-top: 15px;
+    }
+    #locationList div {
+      padding: 8px;
+      margin: 5px 0;
+      background-color: #fff;
+      border: 1px solid #000;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      transition: background-color 0.2s ease;
+    }
+    #locationList div:hover {
+      background-color: #f0f0f0;
+    }
+    #locationList input[type="radio"] {
+      margin-right: 10px;
+    }
+    #locationList label {
+      font-size: 14px;
+      color: #000;
+    }
+    #locationPreview {
+      margin: 5px 0;
+      font-size: 14px;
+      color: #000;
+    }
+    .map-control-icon {
+     
+      background-color: #fff;
+      border: 2px solid #000;
+      border-radius: 50%;
+      padding: 8px;
+      font-size: 22px;
+      color: #000;
+      cursor: pointer;
+      margin: 10px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    .map-control-icon:hover {
+      background-color: #000;
+      color: #fff;
+    }
+  </style>
 
-    displayLocations();
-  } else {
-    document.getElementById("locationList").innerHTML = "Browser does not support Geolocation.";
-  }
-</script>
+  <script>
+    let map, marker;
+    let currentCoords = null;
+    let defaultPosition = { lat: 30.0444, lng: 31.2357 };
+    let hasMovedPin = false;
 
-<script>
-  document.addEventListener("DOMContentLoaded", function() {
-    const checkoutForm = document.querySelector('form[action="/cart"]');
-    if (checkoutForm) {
-      checkoutForm.addEventListener("submit", function(e) {
-        let locations = JSON.parse(localStorage.getItem("userLocations")) || [];
-        let selectedIndex = document.querySelector('input[name="selectedLocation"]:checked');
-        if (selectedIndex) {
-          let selectedLocation = locations[selectedIndex.value];
-          const locationInput = document.createElement("input");
-          locationInput.type = "hidden";
-          locationInput.name = "attributes[SelectedLocation]";
-          locationInput.value = JSON.stringify(selectedLocation);
-          checkoutForm.appendChild(locationInput);
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: defaultPosition,
+        zoom: 12
+      });
+      marker = new google.maps.Marker({
+        map: map,
+        draggable: true,
+        position: defaultPosition
+      });
+      map.addListener("click", function(e) {
+        marker.setPosition(e.latLng);
+        hasMovedPin = true;
+      });
+      marker.addListener("dragend", function() {
+        hasMovedPin = true;
+      });
+
+      const locationIcon = document.createElement("button");
+      locationIcon.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i>';
+      locationIcon.className = "map-control-icon";
+      locationIcon.addEventListener("click", function() {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            function(position) {
+              const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
+              marker.setPosition(pos);
+              map.setCenter(pos);
+              map.setZoom(15);
+              hasMovedPin = true;
+            },
+            function(error) {
+              alert("Location access denied or failed. Please select your location manually from the map.");
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          );
         }
       });
+      map.controls[google.maps.ControlPosition.BOTTOM_RIGHT].push(locationIcon);
     }
-  });
-</script>
-  
-  <div class="content">
-    Content Here
-  </div>
-  
-  
-  
-</body>
 
+    if ("geolocation" in navigator) {
+      const header = document.querySelector(".location-header");
+      const modal = document.getElementById("locationModal");
+      const toggleArrow = document.querySelector(".toggle-arrow");
+      const closeModalBtn = document.getElementById("closeModalBtn");
+      const getLocationBtn = document.getElementById("getLocationBtn");
+      const saveLocationBtn = document.getElementById("saveLocationBtn");
+      const saveMapLocationBtn = document.getElementById("saveMapLocationBtn");
+      const locationList = document.getElementById("locationList");
+      const locationInput = document.getElementById("locationInput");
+      const locationNameInput = document.getElementById("locationName");
+      const phoneNumberInput = document.getElementById("phoneNumber");
+      const locationPreview = document.getElementById("locationPreview");
+      const boxTitle = document.getElementById("boxTitle");
+
+      function toggleModal() {
+        if (modal.classList.contains("open")) {
+          modal.classList.remove("open");
+          toggleArrow.classList.remove("open");
+        } else {
+          modal.classList.add("open");
+          toggleArrow.classList.add("open");
+          google.maps.event.trigger(map, "resize");
+          map.setCenter(defaultPosition);
+          locationPreview.innerHTML = "If your order is for a different location, use 'Set Location from Map'.";
+        }
+      }
+
+      function updateTitle() {
+        let locations = JSON.parse(localStorage.getItem("userLocations")) || [];
+        let selectedIndex = document.querySelector('input[name="selectedLocation"]:checked');
+        if (selectedIndex && locations[selectedIndex.value]) {
+          boxTitle.textContent = locations[selectedIndex.value].name;
+        } else {
+          boxTitle.textContent = "No location selected";
+        }
+      }
+
+      getLocationBtn.addEventListener("click", function() {
+        locationPreview.innerHTML = "Fetching your current location...";
+        navigator.geolocation.getCurrentPosition(
+          function(position) {
+            currentCoords = {
+              link: `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`,
+              timestamp: new Date().toLocaleString()
+            };
+            locationPreview.innerHTML = `Location set to your current position (${position.coords.latitude}, ${position.coords.longitude}).`;
+            locationInput.style.display = "block";
+            locationList.style.display = "none";
+          },
+          function(error) {
+            locationPreview.innerHTML = "Failed to get location. Please select manually from the map.";
+            alert("Location access failed. Please select your location manually from the map.");
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      });
+
+      saveLocationBtn.addEventListener("click", function() {
+        const name = locationNameInput.value.trim();
+        const phone = phoneNumberInput.value.trim();
+        if (name && phone && currentCoords) {
+          let locations = JSON.parse(localStorage.getItem("userLocations")) || [];
+          currentCoords.name = name;
+          currentCoords.phone = phone;
+          locations.push(currentCoords);
+          localStorage.setItem("userLocations", JSON.stringify(locations));
+          displayLocations();
+          locationInput.style.display = "none";
+          locationList.style.display = "block";
+          locationNameInput.value = "";
+          phoneNumberInput.value = "";
+          locationPreview.innerHTML = "";
+          toggleModal();
+        } else {
+          locationPreview.innerHTML = "Please enter both a location name and phone number.";
+        }
+      });
+
+      saveMapLocationBtn.addEventListener("click", function() {
+        const position = marker.getPosition();
+        if (!hasMovedPin) {
+          locationPreview.innerHTML = "Please move the pin to select a location on the map.";
+        } else {
+          currentCoords = {
+            link: `https://www.google.com/maps?q=${position.lat()},${position.lng()}`,
+            timestamp: new Date().toLocaleString()
+          };
+          locationPreview.innerHTML = `Location: (${position.lat()}, ${position.lng()})`;
+          locationInput.style.display = "block";
+          locationList.style.display = "none";
+        }
+      });
+
+      function displayLocations() {
+        let locations = JSON.parse(localStorage.getItem("userLocations")) || [];
+        locationList.innerHTML = "<h4>Saved Locations:</h4>";
+        locations.forEach((loc, index) => {
+          locationList.innerHTML += `
+            <div>
+              <input type="radio" name="selectedLocation" value="${index}" id="loc${index}" ${index === 0 && locations.length === 1 ? "checked" : ""}>
+              <label for="loc${index}">${loc.name} - <a href="${loc.link}" target="_blank">View on Map</a></label>
+            </div>`;
+        });
+        document.querySelectorAll('input[name="selectedLocation"]').forEach(radio => {
+          radio.addEventListener("change", updateTitle);
+        });
+        updateTitle();
+      }
+
+      header.addEventListener("click", toggleModal);
+      closeModalBtn.addEventListener("click", toggleModal);
+
+      document.addEventListener("DOMContentLoaded", function() {
+        let locations = JSON.parse(localStorage.getItem("userLocations")) || [];
+        displayLocations();
+        if (locations.length === 0 || !document.querySelector('input[name="selectedLocation"]:checked')) {
+          toggleModal();
+        }
+
+        const checkoutLinks = document.querySelectorAll('a[href="/checkout"], button[data-checkout]');
+        checkoutLinks.forEach(link => {
+          link.addEventListener("click", function(e) {
+            let locations = JSON.parse(localStorage.getItem("userLocations")) || [];
+            let selectedIndex = document.querySelector('input[name="selectedLocation"]:checked');
+            if (!selectedIndex || locations.length === 0) {
+              e.preventDefault();
+              alert("Please select a delivery location before proceeding to checkout.");
+              toggleModal();
+            }
+          });
+        });
+
+        const checkoutForm = document.querySelector('form[action="/cart"]');
+        if (checkoutForm) {
+          checkoutForm.addEventListener("submit", function(e) {
+            let locations = JSON.parse(localStorage.getItem("userLocations")) || [];
+            let selectedIndex = document.querySelector('input[name="selectedLocation"]:checked');
+            if (selectedIndex && locations[selectedIndex.value]) {
+              const locationInput = document.createElement("input");
+              locationInput.type = "hidden";
+              locationInput.name = "attributes[SelectedLocation]";
+              locationInput.value = JSON.stringify(locations[selectedIndex.value]);
+              checkoutForm.appendChild(locationInput);
+            } else {
+              e.preventDefault();
+              alert("Please select a delivery location before proceeding to checkout.");
+              toggleModal();
+            }
+          });
+        }
+      });
+    } else {
+      document.getElementById("locationList").innerHTML = "Browser does not support Geolocation.";
+    }
+  </script>
+</body>
 </html>
