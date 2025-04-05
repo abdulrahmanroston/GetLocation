@@ -10,7 +10,7 @@
 <body>
   <div class="location-header">
     <span><i class="fa-solid fa-location-dot"></i> Delivery to: <span id="boxTitle">No location selected</span></span>
-    <span class="toggle-arrow">▼</span>
+    <span class="toggle-arrow"><i class="fa-solid fa-caret-down"></i></span>
   </div>
 
   <div id="locationModal" class="location-modal">
@@ -48,7 +48,7 @@
       top: 0;
       left: 0;
       width: 100%;
-      padding: 12px 20px;
+      padding: 9px 20px;
       background-color: #000;
       border-bottom: 1px solid #000;
       display: flex;
@@ -60,24 +60,41 @@
       cursor: pointer;
     }
     .location-header i {
-      margin-right: 8px;
+      margin-right: 10px;
       color: #fff;
     }
-    .toggle-arrow {
-      font-size: 20px;
-      transition: transform 0.3s ease;
-      color: #fff;
-      display: inline-block;
-    }
-    .toggle-arrow.open {
-      transform: rotate(180deg);
-    }
+.location-header .toggle-arrow i {
+  margin-right: 40px !important;
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.toggle-arrow {
+  margin-right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.toggle-arrow i {
+  font-size: 23px;
+  color: #fff;
+  transform-origin: center;
+}
+
+.toggle-arrow.open i {
+  transform: rotate(180deg);
+}
+
+
     .location-modal {
       position: fixed;
       bottom: -100%;
       left: 0;
       width: 100%;
-      height: 80%;
+      height: 93%;
       background-color: #fff;
       box-shadow: 0 -4px 15px rgba(0,0,0,0.2);
       transition: bottom 0.4s ease-in-out;
@@ -96,6 +113,9 @@
     .modal-header {
       text-align: right;
       padding: 0 15px;
+    }
+    #map {
+      height: 400px !important;
     }
     .close-btn {
       background: none;
@@ -130,8 +150,14 @@
     .modal-controls button:hover {
       background-color: #333;
     }
+    .modal-controls #locationInput input {
+      max-width: 75%;
+      margin: 10px auto !important;
+    }
     #locationList {
       margin-top: 15px;
+      height: 250px;
+      overflow: scroll;
     }
     #locationList div {
       padding: 3px 5px;
@@ -189,13 +215,11 @@
   </style>
 
   <script>
-    
-    
-    
-       // Delivery zones data
-  const deliveryZones = [
-   
-   {
+    // Delivery zones (empty - add your data here)
+    const deliveryZones = [
+      
+      
+      {
   "name": "Zayed - October",
   "price": 100,
   "coordinates": [
@@ -741,36 +765,29 @@
   ]
 }
   
-  ];
-    
-    
-    
-    
-    
-    
-    
- // Global variables
+      
+      
+      
+    ];
+
+    // Global variables
     let map, marker;
     let currentCoords = null;
     let defaultPosition = { lat: 30.01626356681352, lng: 31.412277903747793 };
     let hasMovedPin = false;
 
-    // Initialize Google Map with custom styles
+    // Initialize Google Map and open modal automatically
     function initMap() {
       const mapStyles = [
         {
           "featureType": "all",
           "elementType": "geometry",
-          "stylers": [
-            { "visibility": "on" }
-          ]
+          "stylers": [{ "visibility": "on" }]
         },
         {
           "featureType": "all",
           "elementType": "labels",
-          "stylers": [
-            { "visibility": "on" }
-          ]
+          "stylers": [{ "visibility": "on" }]
         }
       ];
 
@@ -783,59 +800,77 @@
 
       marker = new google.maps.Marker({
         map: map,
-        draggable: true,
         position: defaultPosition
       });
 
+      // Click event to move pin only within delivery zones
       map.addListener("click", (e) => {
-        marker.setPosition(e.latLng);
-        hasMovedPin = true;
-      });
-      marker.addListener("dragend", () => hasMovedPin = true);
+        const clickedPosition = e.latLng;
+        let isWithinDeliveryZone = false;
 
-    
+        for (const zone of deliveryZones) {
+          const polygon = new google.maps.Polygon({ paths: zone.coordinates });
+          if (google.maps.geometry.poly.containsLocation(clickedPosition, polygon)) {
+            isWithinDeliveryZone = true;
+            break;
+          }
+        }
+
+        if (isWithinDeliveryZone) {
+          marker.setPosition(clickedPosition);
+          hasMovedPin = true;
+          setCurrentCoords({ lat: clickedPosition.lat(), lng: clickedPosition.lng() });
+          showLocationInput(`Location: (${clickedPosition.lat()}, ${clickedPosition.lng()})`);
+        }
+      });
+
+      // Draw delivery zones
       deliveryZones.forEach(zone => {
-        const deliveryPolygon = new google.maps.Polygon({
-          paths: zone.coordinates.map(coord => ({ lat: coord.lat, lng: coord.lng })), 
-          strokeColor: "#000000", 
+        new google.maps.Polygon({
+          paths: zone.coordinates.map(coord => ({ lat: coord.lat, lng: coord.lng })),
+          strokeColor: "#000000",
           strokeOpacity: 0.8,
           strokeWeight: 0,
           fillOpacity: 0,
+          clickable: false,
           map: map
         });
-
       });
 
-const outerBounds = [
-  { lat: -17.5, lng: -15.0 }, // جنوب غرب
-  { lat: -17.5, lng: 75.0 },  // جنوب شرق
-  { lat: 72.5, lng: 75.0 },   // شمال شرق
-  { lat: 72.5, lng: -15.0 }   // شمال غرب
-];
-
+      // Define outer bounds (100 million square kilometers)
+      const outerBounds = [
+        { lat: -90.0, lng: -180.0 },
+        { lat: -90.0, lng: 0.0 }, 
+        { lat: -90.0, lng: 180.0 },
+        { lat: 90.0, lng: 180.0 },  
+        { lat: 90.0, lng: -180.0 }
+      ];
 
       const paths = [outerBounds];
-      
-      
       deliveryZones.forEach(zone => {
-      
         const reversedCoordinates = [...zone.coordinates].reverse();
         paths.push(reversedCoordinates);
       });
 
-      // إنشاء المضلع الخارجي مع الثقوب
-      const outerPolygon = new google.maps.Polygon({
+      // Draw outer polygon with holes
+      new google.maps.Polygon({
         paths: paths,
         strokeColor: "#FF0000",
         strokeOpacity: 0,
         strokeWeight: 0.1,
         fillColor: "#ff8070",
-        fillOpacity: 0.8, 
+        fillOpacity: 0.8,
+        clickable: false,
         map: map,
         zIndex: 1
       });
 
       addMapControls();
+
+      // Open modal and display locations after map initialization
+      displayLocations();
+      updateTitle();
+      toggleModal();
     }
 
     // Add custom map controls
@@ -861,6 +896,7 @@ const outerBounds = [
         google.maps.event.trigger(map, "resize");
         map.setCenter(defaultPosition);
         locationPreview.innerHTML = "If your order is for a different location, use 'Set Location from Map'.";
+        displayLocations(); // Ensure locations are displayed when modal opens
       }
     }
 
@@ -880,12 +916,26 @@ const outerBounds = [
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
-            marker.setPosition(pos);
-            map.setCenter(pos);
-            map.setZoom(15);
-            hasMovedPin = true;
-            setCurrentCoords(pos);
-            showLocationInput(`Location set to your current position (${pos.lat}, ${pos.lng}).`);
+            let isWithinDeliveryZone = false;
+
+            for (const zone of deliveryZones) {
+              const polygon = new google.maps.Polygon({ paths: zone.coordinates });
+              if (google.maps.geometry.poly.containsLocation(new google.maps.LatLng(pos.lat, pos.lng), polygon)) {
+                isWithinDeliveryZone = true;
+                break;
+              }
+            }
+
+            if (isWithinDeliveryZone) {
+              marker.setPosition(pos);
+              map.setCenter(pos);
+              map.setZoom(15);
+              hasMovedPin = true;
+              setCurrentCoords(pos);
+              showLocationInput(`Location set to your current position (${pos.lat}, ${pos.lng}).`);
+            } else {
+              locationPreview.innerHTML = "Your current location is outside delivery zones. Please select a location within a delivery zone.";
+            }
           },
           (error) => {
             locationPreview.innerHTML = "Failed to get location. Please select manually from the map.";
@@ -914,16 +964,37 @@ const outerBounds = [
       locationList.style.display = "none";
     }
 
-    // Check if location is within a delivery zone
+    // Check if location is within a delivery zone and return zone info
     function checkDeliveryZone(lat, lng) {
       const position = new google.maps.LatLng(lat, lng);
       for (const zone of deliveryZones) {
-        const polygon = new google.maps.Polygon({ paths: zone.coordinates.map(coord => ({ lat: coord.lat, lng: coord.lng })) });
+        const polygon = new google.maps.Polygon({ paths: zone.coordinates });
         if (google.maps.geometry.poly.containsLocation(position, polygon)) {
           return { name: zone.name, price: zone.price };
         }
       }
       return null;
+    }
+
+    // Update delivery prices in stored locations
+    function updateStoredLocationPrices() {
+      const locations = JSON.parse(localStorage.getItem("userLocations")) || [];
+      let updated = false;
+
+      locations.forEach((loc, index) => {
+        const lat = parseFloat(loc.link.split("q=")[1].split(",")[0]);
+        const lng = parseFloat(loc.link.split("q=")[1].split(",")[1]);
+        const zone = checkDeliveryZone(lat, lng);
+        if (zone && loc.deliveryPrice !== zone.price) {
+          locations[index].deliveryPrice = zone.price;
+          updated = true;
+        }
+      });
+
+      if (updated) {
+        localStorage.setItem("userLocations", JSON.stringify(locations));
+      }
+      return locations;
     }
 
     // Save location
@@ -973,18 +1044,20 @@ const outerBounds = [
     // Display saved locations
     function displayLocations() {
       const locationList = document.getElementById("locationList");
-      const locations = JSON.parse(localStorage.getItem("userLocations")) || [];
-      locationList.innerHTML = "<h4>Saved Locations:</h4>";
+      const locations = updateStoredLocationPrices(); // Update prices before displaying
+      locationList.innerHTML = locations.length > 0 ? "<h4>Saved Locations:</h4>" : "<p>No saved locations yet.</p>";
       locations.forEach((loc, index) => {
         locationList.innerHTML += `
           <div>
             <div>
               <input type="radio" name="selectedLocation" value="${index}" id="loc${index}">
-              <label for="loc${index}">${loc.name} - <a href="${loc.link}" target="_blank">View on Map</a> (Delivery: ${loc.deliveryPrice} EGP)</label>
+              <label for="loc${index}">${loc.name} - <a href="${loc.link}" target="_blank">View on Map</a> \u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0(Delivery: ${loc.deliveryPrice} EGP)</label>
             </div>
             <i class="fa-solid fa-trash delete-icon" data-index="${index}"></i>
           </div>`;
       });
+
+      // Reattach event listeners for radio buttons and delete icons
       document.querySelectorAll('input[name="selectedLocation"]').forEach(radio => {
         radio.addEventListener("change", () => {
           updateTitle();
@@ -1058,20 +1131,15 @@ const outerBounds = [
       saveMapLocationBtn.addEventListener("click", () => {
         const position = marker.getPosition();
         if (!hasMovedPin) {
-          document.getElementById("locationPreview").innerHTML = "Please move the pin to select a location on the map.";
+          document.getElementById("locationPreview").innerHTML = "Please click within a delivery zone to select a location.";
         } else {
           setCurrentCoords({ lat: position.lat(), lng: position.lng() });
           showLocationInput(`Location: (${position.lat()}, ${position.lng()})`);
         }
       });
 
+      // Event listeners for checkout validation
       document.addEventListener("DOMContentLoaded", () => {
-        displayLocations();
-        const locations = JSON.parse(localStorage.getItem("userLocations")) || [];
-        if (locations.length === 0 || !document.querySelector('input[name="selectedLocation"]:checked')) {
-          toggleModal();
-        }
-
         const checkoutLinks = document.querySelectorAll('a[href="/checkout"], button[data-checkout]');
         checkoutLinks.forEach(link => link.addEventListener("click", validateCheckout));
 
